@@ -34,6 +34,9 @@ import java.util.concurrent.TimeUnit;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.exceptions.PermissionException;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 /**
  *
@@ -84,12 +87,31 @@ public class PlayCmd extends MusicCommand
             event.reply(builder.toString());
             return;
         }
-        String args = event.getArgs().startsWith("<") && event.getArgs().endsWith(">") 
-                ? event.getArgs().substring(1,event.getArgs().length()-1) 
-                : event.getArgs().isEmpty() ? event.getMessage().getAttachments().get(0).getUrl() : event.getArgs();
+
+        final String args;
+        if (event.getArgs().startsWith("<") && event.getArgs().endsWith(">")) {
+            args = event.getArgs().substring(1,event.getArgs().length()-1);
+        } else {
+            String argsTmp = event.getArgs().isEmpty() ? event.getMessage().getAttachments().get(0).getUrl() : event.getArgs();
+            if (argsTmp.contains("bitchute")) {
+                try {
+                    argsTmp = findUrlBitchute(argsTmp);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            args = argsTmp;
+        }
         event.reply(loadingEmoji+" Loading... `["+args+"]`", m -> bot.getPlayerManager().loadItemOrdered(event.getGuild(), args, new ResultHandler(m,event,false)));
     }
-    
+
+    private String findUrlBitchute(String argsTmp) throws Exception {
+        Document doc = Jsoup.connect(argsTmp).get();
+        Element player = doc.select("#player").first();
+        String source = player.children().first().attributes().get("src");
+        return source;
+    }
+
     private class ResultHandler implements AudioLoadResultHandler
     {
         private final Message m;
